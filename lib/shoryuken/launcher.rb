@@ -3,8 +3,8 @@ module Shoryuken
     include Util
 
     def initialize
-      @managers = create_managers
       @busy_processors = Concurrent::AtomicFixnum.new(0)
+      @managers = create_managers
     end
 
     def start
