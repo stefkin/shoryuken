@@ -77,12 +77,14 @@ module Shoryuken
     end
 
     def create_managers
+      total_concurrency = Shoryuken.groups.map { |_, opt| opt[:concurrency] }.sum
+
       Shoryuken.groups.map do |group, options|
         Shoryuken::Manager.new(
           group,
           Shoryuken::Fetcher.new(group),
           Shoryuken.polling_strategy(group).new(options[:queues], Shoryuken.delay(group)),
-          Shoryuken.options[:concurrency],
+          total_concurrency,
           executor,
           @busy_processors
         )
