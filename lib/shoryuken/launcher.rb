@@ -4,6 +4,7 @@ module Shoryuken
 
     def initialize
       @managers = create_managers
+      @busy_processors = Concurrent::AtomicFixnum.new(0)
     end
 
     def start
@@ -81,8 +82,9 @@ module Shoryuken
           group,
           Shoryuken::Fetcher.new(group),
           Shoryuken.polling_strategy(group).new(options[:queues], Shoryuken.delay(group)),
-          options[:concurrency],
-          executor
+          Shoryuken.groups['default'][:concurrency],
+          executor,
+          @busy_processors
         )
       end
     end
