@@ -82,7 +82,7 @@ module Shoryuken
           group,
           Shoryuken::Fetcher.new(group),
           Shoryuken.polling_strategy(group).new(options[:queues], Shoryuken.delay(group)),
-          Shoryuken.groups['default'][:concurrency],
+          Shoryuken.options[:concurrency],
           executor,
           @busy_processors
         )
