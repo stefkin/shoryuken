@@ -3,7 +3,11 @@ module Shoryuken
     include Util
 
     def initialize
-      @busy_processors = Concurrent::AtomicFixnum.new(0)
+      if Shoryuken.options[:shared_executors]
+        @busy_processors = Concurrent::AtomicFixnum.new(0)
+        @total_concurrency = Shoryuken.groups.map { |_, options| options[:concurrency] }.sum
+      end
+
       @managers = create_managers
     end
 
@@ -77,14 +81,12 @@ module Shoryuken
     end
 
     def create_managers
-      total_concurrency = Shoryuken.groups.map { |_, opt| opt[:concurrency] }.sum
-
       Shoryuken.groups.map do |group, options|
         Shoryuken::Manager.new(
           group,
           Shoryuken::Fetcher.new(group),
           Shoryuken.polling_strategy(group).new(options[:queues], Shoryuken.delay(group)),
-          total_concurrency,
+          @total_concurrency || options[:concurrency],
           executor,
           @busy_processors
         )

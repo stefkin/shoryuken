@@ -8,12 +8,12 @@ module Shoryuken
 
     attr_reader :group
 
-    def initialize(group, fetcher, polling_strategy, concurrency, executor, busy_processors)
+    def initialize(group, fetcher, polling_strategy, concurrency, executor, busy_processors = nil)
       @group            = group
       @fetcher          = fetcher
       @polling_strategy = polling_strategy
       @max_processors   = concurrency
-      @busy_processors  = busy_processors
+      @busy_processors  = busy_processors || Concurrent::AtomicFixnum.new(0)
       @executor         = executor
       @running          = Concurrent::AtomicBoolean.new(true)
     end

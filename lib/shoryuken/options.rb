@@ -12,7 +12,8 @@ module Shoryuken
         utilization_update: [],
         quiet: [],
         shutdown: []
-      }
+      },
+      shared_executors: false
     }.freeze
 
     attr_accessor :active_job_queue_name_prefixing, :cache_visibility_timeout, :groups,
