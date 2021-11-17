@@ -87,7 +87,7 @@ module Shoryuken
           group: group,
           options: options,
           shoryuken_options: Shoryuken.options,
-          total_concurrency: @total_concurency,
+          total_concurrency: @total_concurrency,
           busy_processors: @busy_processors.inspect
         )
         Shoryuken::Manager.new(
