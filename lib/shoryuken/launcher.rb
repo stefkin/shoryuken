@@ -82,6 +82,14 @@ module Shoryuken
 
     def create_managers
       Shoryuken.groups.map do |group, options|
+        Rails.logger.info(
+          event: :shoryuken_group,
+          group: group,
+          options: options,
+          shoryuken_options: Shoryuken.options,
+          total_concurrency: @total_concurency,
+          busy_processors: @busy_processors.inspect
+        )
         Shoryuken::Manager.new(
           group,
           Shoryuken::Fetcher.new(group),
