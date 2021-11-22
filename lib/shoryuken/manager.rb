@@ -8,13 +8,12 @@ module Shoryuken
 
     attr_reader :group
 
-    def initialize(group, fetcher, polling_strategy, concurrency, executor, busy_processors = nil)
+    def initialize(group, fetcher, polling_strategy, executor)
       @group            = group
       @fetcher          = fetcher
       @polling_strategy = polling_strategy
-      @max_processors   = concurrency
-      @busy_processors  = busy_processors || Concurrent::AtomicFixnum.new(0)
       @executor         = executor
+      @max_processors   = executor.max_length
       @running          = Concurrent::AtomicBoolean.new(true)
     end
 
@@ -38,7 +37,7 @@ module Shoryuken
     def dispatch
       return unless running?
 
-      if ready <= 0 || (queue = @polling_strategy.next_queue).nil?
+      if (queue = @polling_strategy.next_queue).nil?
         return sleep(MIN_DISPATCH_INTERVAL)
       end
 
@@ -54,7 +53,7 @@ module Shoryuken
     end
 
     def busy
-      @busy_processors.value
+      @executor.length
     end
 
     def ready
@@ -62,7 +61,6 @@ module Shoryuken
     end
 
     def processor_done(queue)
-      @busy_processors.decrement
       fire_utilization_update_event
 
       client_queue = Shoryuken::Client.queues(queue)
@@ -77,7 +75,6 @@ module Shoryuken
 
       logger.debug { "Assigning #{sqs_msg.message_id}" }
 
-      @busy_processors.increment
       fire_utilization_update_event
 
       Concurrent::Promise
