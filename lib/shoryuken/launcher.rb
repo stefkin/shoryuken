@@ -29,7 +29,9 @@ module Shoryuken
       initiate_stop
 
       executor.shutdown
+      @managers.each { |m| m.own_executor.shutdown }
       executor.wait_for_termination
+      @managers.each { |m| m.own_executor.wait_for_termination }
     end
 
     def healthy?
@@ -42,7 +44,20 @@ module Shoryuken
     private
 
     def executor
-      @_executor ||= Shoryuken.launcher_executor || Concurrent.global_io_executor
+      @_executor ||= begin
+        groups_concurrency = Shoryuken.groups.map do |_group, options|
+          options[:concurrency]
+        end.sum
+
+        Concurrent::ThreadPoolExecutor.new(
+          min_threads: 1,
+          max_threads: [Integer(ENV['RAILS_MAX_THREADS'] || 1) - groups_concurrency, 1].max,
+          auto_terminate: true,
+          idletime: 60,
+          max_queue: 1,
+          fallback_policy: :abort
+        )
+      end
     end
 
     def start_managers
@@ -81,6 +96,7 @@ module Shoryuken
           group,
           Shoryuken::Fetcher.new(group),
           Shoryuken.polling_strategy(group).new(options[:queues], Shoryuken.delay(group)),
+          options[:concurrency],
           executor
         )
       end

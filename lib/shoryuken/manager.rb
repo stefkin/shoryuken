@@ -6,15 +6,23 @@ module Shoryuken
     # See https://github.com/phstc/shoryuken/issues/348#issuecomment-292847028
     MIN_DISPATCH_INTERVAL = 0.1
 
-    attr_reader :group
+    attr_reader :group, :own_executor
 
-    def initialize(group, fetcher, polling_strategy, executor)
+    def initialize(group, fetcher, polling_strategy, concurrency, executor)
       @group            = group
       @fetcher          = fetcher
       @polling_strategy = polling_strategy
       @executor         = executor
       @max_processors   = executor.max_length
       @running          = Concurrent::AtomicBoolean.new(true)
+      @own_executor = Concurrent::ThreadPoolExecutor.new(
+        min_threads: 0,
+        max_threads: concurrency,
+        auto_terminate: true,
+        idletime: 60,
+        max_queue: 1,
+        fallback_policy: :abort
+      )
     end
 
     def start
@@ -23,7 +31,7 @@ module Shoryuken
     end
 
     def running?
-      @running.true? && @executor.running?
+      @running.true? && @executor.running? && @own_executor.running?
     end
 
     private
@@ -31,6 +39,8 @@ module Shoryuken
     def dispatch_loop
       return unless running?
 
+      @own_executor.post { dispatch }
+    rescue Concurrent::RejectedExecutionError
       @executor.post { dispatch }
     end
 
@@ -53,7 +63,7 @@ module Shoryuken
     end
 
     def busy
-      @executor.length
+      @own_executor.length
     end
 
     def ready
@@ -77,6 +87,11 @@ module Shoryuken
 
       fire_utilization_update_event
 
+      Concurrent::Promise
+        .execute(executor: @own_executor) { Processor.process(queue_name, sqs_msg) }
+        .then { processor_done(queue_name) }
+        .rescue { processor_done(queue_name) }
+    rescue Concurrent::RejectedExecutionError
       Concurrent::Promise
         .execute(executor: @executor) { Processor.process(queue_name, sqs_msg) }
         .then { processor_done(queue_name) }
