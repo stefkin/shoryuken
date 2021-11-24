@@ -20,7 +20,7 @@ module Shoryuken
         max_threads: concurrency,
         auto_terminate: true,
         idletime: 60,
-        max_queue: 1,
+        max_queue: -1,
         fallback_policy: :abort
       )
     end

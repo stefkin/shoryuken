@@ -54,7 +54,7 @@ module Shoryuken
           max_threads: [Integer(ENV['RAILS_MAX_THREADS'] || 1) - groups_concurrency, 1].max,
           auto_terminate: true,
           idletime: 60,
-          max_queue: 1,
+          max_queue: 100,
           fallback_policy: :abort
         )
       end
