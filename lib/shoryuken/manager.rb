@@ -15,14 +15,16 @@ module Shoryuken
       @executor         = executor
       @max_processors   = executor.max_length
       @running          = Concurrent::AtomicBoolean.new(true)
-      @own_executor = Concurrent::ThreadPoolExecutor.new(
-        min_threads: 0,
-        max_threads: concurrency,
-        auto_terminate: true,
-        idletime: 60,
-        max_queue: -1,
-        fallback_policy: :abort
-      )
+      if conncurrency > 0
+        @own_executor = Concurrent::ThreadPoolExecutor.new(
+          min_threads: 0,
+          max_threads: concurrency,
+          auto_terminate: true,
+          idletime: 60,
+          max_queue: -1,
+          fallback_policy: :abort
+        )
+      end
     end
 
     def start
@@ -31,7 +33,7 @@ module Shoryuken
     end
 
     def running?
-      @running.true? && @executor.running? && @own_executor.running?
+      @running.true? && @executor.running? && (@own_executor.nil? || @own_executor.running?)
     end
 
     private
@@ -39,9 +41,21 @@ module Shoryuken
     def dispatch_loop
       return unless running?
 
-      @own_executor.post { dispatch }
-    rescue Concurrent::RejectedExecutionError
-      @executor.post { dispatch }
+      with_executor do |ex|
+        ex.post { dispatch }
+      end
+    end
+
+    def with_executor
+      if @own_executor
+        begin
+          yield(@own_executor)
+        rescue Concurrent::RejectedExecutionError
+          yield(@executor)
+        end
+      else
+        yield(@executor)
+      end
     end
 
     def dispatch
@@ -87,15 +101,12 @@ module Shoryuken
 
       fire_utilization_update_event
 
-      Concurrent::Promise
-        .execute(executor: @own_executor) { Processor.process(queue_name, sqs_msg) }
-        .then { processor_done(queue_name) }
-        .rescue { processor_done(queue_name) }
-    rescue Concurrent::RejectedExecutionError
-      Concurrent::Promise
-        .execute(executor: @executor) { Processor.process(queue_name, sqs_msg) }
-        .then { processor_done(queue_name) }
-        .rescue { processor_done(queue_name) }
+      with_executor do |ex|
+        Concurrent::Promise
+          .execute(executor: ex) { Processor.process(queue_name, sqs_msg) }
+          .then { processor_done(queue_name) }
+          .rescue { processor_done(queue_name) }
+      end
     end
 
     def dispatch_batch(queue)
