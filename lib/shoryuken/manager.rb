@@ -77,7 +77,7 @@ module Shoryuken
     end
 
     def busy
-      @own_executor.length
+      @own_executor&.length || 0
     end
 
     def ready

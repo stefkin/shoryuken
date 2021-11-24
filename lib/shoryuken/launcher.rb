@@ -29,9 +29,9 @@ module Shoryuken
       initiate_stop
 
       executor.shutdown
-      @managers.each { |m| m.own_executor.shutdown }
+      @managers.each { |m| m.own_executor&.shutdown }
       executor.wait_for_termination
-      @managers.each { |m| m.own_executor.wait_for_termination }
+      @managers.each { |m| m.own_executor&.wait_for_termination }
     end
 
     def healthy?
