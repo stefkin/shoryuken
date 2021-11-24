@@ -15,7 +15,7 @@ module Shoryuken
       @executor         = executor
       @max_processors   = executor.max_length
       @running          = Concurrent::AtomicBoolean.new(true)
-      if conncurrency > 0
+      if concurrency > 0
         @own_executor = Concurrent::ThreadPoolExecutor.new(
           min_threads: 0,
           max_threads: concurrency,
