@@ -70,7 +70,7 @@ module Shoryuken
       # > https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html
       limit = 1 if shoryuken_queue.fifo? && !batched_queue?(shoryuken_queue)
 
-      [limit, FETCH_LIMIT, options[:max_number_of_messages]].compact.select(&:positive?).min
+      [limit, FETCH_LIMIT, options[:max_number_of_messages]].compact.min
     end
 
     def receive_options(queue)
