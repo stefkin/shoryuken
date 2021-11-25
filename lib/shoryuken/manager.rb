@@ -40,9 +40,11 @@ module Shoryuken
     def with_executor
       return yield(@shared_executor) if own_executor.nil?
 
-      yield(own_executor)
-    rescue Concurrent::RejectedExecutionError
-      yield(@shared_executor)
+      begin
+        yield(own_executor)
+      rescue Concurrent::RejectedExecutionError
+        yield(@shared_executor)
+      end
     end
 
     def dispatch
@@ -68,7 +70,7 @@ module Shoryuken
     end
 
     def ready
-      @max_processors - busy
+      nil
     end
 
     def processor_done(queue)
