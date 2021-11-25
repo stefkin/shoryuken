@@ -8,23 +8,14 @@ module Shoryuken
 
     attr_reader :group, :own_executor
 
-    def initialize(group, fetcher, polling_strategy, concurrency, executor)
+    def initialize(group, fetcher, polling_strategy, concurrency, shared_executor)
       @group            = group
       @fetcher          = fetcher
       @polling_strategy = polling_strategy
-      @executor         = executor
+      @shared_executor = shared_executor
       @max_processors   = executor.max_length
       @running          = Concurrent::AtomicBoolean.new(true)
-      if concurrency > 0
-        @own_executor = Concurrent::ThreadPoolExecutor.new(
-          min_threads: 0,
-          max_threads: concurrency,
-          auto_terminate: true,
-          idletime: 60,
-          max_queue: -1,
-          fallback_policy: :abort
-        )
-      end
+      init_own_executor(concurrency) if concurrency&.positive?
     end
 
     def start
@@ -33,7 +24,7 @@ module Shoryuken
     end
 
     def running?
-      @running.true? && @executor.running? && (@own_executor.nil? || @own_executor.running?)
+      @running.true? && @shared_executor.running? && (own_executor.nil? || own_executor.running?)
     end
 
     private
@@ -41,21 +32,17 @@ module Shoryuken
     def dispatch_loop
       return unless running?
 
-      with_executor do |ex|
-        ex.post { dispatch }
+      with_executor do |executor|
+        executor.post { dispatch }
       end
     end
 
     def with_executor
-      if @own_executor
-        begin
-          yield(@own_executor)
-        rescue Concurrent::RejectedExecutionError
-          yield(@executor)
-        end
-      else
-        yield(@executor)
-      end
+      return yield(@shared_executor) if own_executor.nil?
+
+      yield(own_executor)
+    rescue Concurrent::RejectedExecutionError
+      yield(@shared_executor)
     end
 
     def dispatch
@@ -101,9 +88,9 @@ module Shoryuken
 
       fire_utilization_update_event
 
-      with_executor do |ex|
+      with_executor do |executor|
         Concurrent::Promise
-          .execute(executor: ex) { Processor.process(queue_name, sqs_msg) }
+          .execute(executor: executor) { Processor.process(queue_name, sqs_msg) }
           .then { processor_done(queue_name) }
           .rescue { processor_done(queue_name) }
       end
@@ -151,6 +138,17 @@ module Shoryuken
         max_processors: @max_processors,
         busy_processors: busy
       }
+    end
+
+    def init_own_executor(concurrency)
+      @own_executor = Concurrent::ThreadPoolExecutor.new(
+        min_threads: 0,
+        max_threads: concurrency,
+        auto_terminate: true,
+        idletime: 60,
+        max_queue: -1,
+        fallback_policy: :abort
+      )
     end
   end
 end
