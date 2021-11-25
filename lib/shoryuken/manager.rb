@@ -13,7 +13,7 @@ module Shoryuken
       @fetcher          = fetcher
       @polling_strategy = polling_strategy
       @shared_executor = shared_executor
-      @max_processors   = executor.max_length
+      @max_processors   = shared_executor.max_length
       @running          = Concurrent::AtomicBoolean.new(true)
       init_own_executor(concurrency) if concurrency&.positive?
     end
