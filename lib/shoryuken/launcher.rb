@@ -45,13 +45,11 @@ module Shoryuken
 
     def executor
       @_executor ||= begin
-        # groups_concurrency = Shoryuken.groups.map do |_group, options|
-        #   options[:concurrency]
-        # end.sum
+        Rails.logger.info(event: :shoryuken_start, concurrency: Shoryuken.options[:concurrency], executor: 'main')
 
         Concurrent::ThreadPoolExecutor.new(
           min_threads: 1,
-          max_threads: 25,
+          max_threads: Shoryuken.options[:concurrency],
           auto_terminate: true,
           idletime: 60,
           max_queue: 100,

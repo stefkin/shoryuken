@@ -141,6 +141,8 @@ module Shoryuken
     end
 
     def init_own_executor(concurrency)
+      Rails.logger.info(event: :shoryuken_start, concurrency: concurrency, executor: @group)
+
       @own_executor = Concurrent::ThreadPoolExecutor.new(
         min_threads: 0,
         max_threads: concurrency,
