@@ -50,7 +50,7 @@ module Shoryuken
     def dispatch
       return unless running?
 
-      if (queue = @polling_strategy.next_queue).nil?
+      if ready.zero? || (queue = @polling_strategy.next_queue).nil?
         return sleep(MIN_DISPATCH_INTERVAL)
       end
 
@@ -70,7 +70,7 @@ module Shoryuken
     end
 
     def ready
-      nil
+      @shared_executor.remaining_capacity + (own_executor&.remaining_capacity || 0)
     end
 
     def processor_done(queue)
@@ -105,7 +105,7 @@ module Shoryuken
     end
 
     def dispatch_single_messages(queue)
-      messages = @fetcher.fetch(queue, ready)
+      messages = @fetcher.fetch(queue, nil)
 
       @polling_strategy.messages_found(queue.name, messages.size)
       messages.each { |message| assign(queue.name, message) }

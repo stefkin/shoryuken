@@ -52,7 +52,7 @@ module Shoryuken
           max_threads: Shoryuken.options[:concurrency],
           auto_terminate: true,
           idletime: 60,
-          max_queue: 100,
+          max_queue: -1,
           fallback_policy: :abort
         )
       end
