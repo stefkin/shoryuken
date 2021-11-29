@@ -76,10 +76,7 @@ module Shoryuken
     def processor_done(queue, ex_type)
       fire_utilization_update_event
       Prometheus::ApplicationCustomMetrics.thread_pool
-        .decrement(labels: {
-                     queue: queue,
-                     executor: ex_type == 'own' ? queue : 'shared'
-                   })
+        .decrement(queue: queue, executor: ex_type == 'own' ? queue : 'shared')
 
       client_queue = Shoryuken::Client.queues(queue)
       return unless client_queue.fifo?
@@ -97,10 +94,7 @@ module Shoryuken
 
       with_executor do |executor, ex_type|
         Prometheus::ApplicationCustomMetrics.thread_pool
-          .increment(labels: {
-                       queue: queue_name,
-                       executor: ex_type == 'own' ? queue_name : 'shared'
-                     })
+          .increment(queue: queue_name, executor: ex_type == 'own' ? queue_name : 'shared')
 
         Concurrent::Promise
           .execute(executor: executor) { Processor.process(queue_name, sqs_msg) }
