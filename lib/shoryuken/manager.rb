@@ -32,18 +32,18 @@ module Shoryuken
     def dispatch_loop
       return unless running?
 
-      with_executor do |executor|
+      with_executor do |executor, ex_type|
         executor.post { dispatch }
       end
     end
 
     def with_executor
-      return yield(@shared_executor) if own_executor.nil?
+      return yield(@shared_executor, 'shared') if own_executor.nil?
 
       begin
-        yield(own_executor)
+        yield(own_executor, 'own')
       rescue Concurrent::RejectedExecutionError
-        yield(@shared_executor)
+        yield(@shared_executor, 'shared')
       end
     end
 
@@ -73,8 +73,13 @@ module Shoryuken
       @shared_executor.remaining_capacity + (own_executor&.remaining_capacity || 0)
     end
 
-    def processor_done(queue)
+    def processor_done(queue, ex_type)
       fire_utilization_update_event
+      Prometheus::ApplicationCustomMetrics.thread_pool
+        .decrement(labels: {
+                     queue: queue,
+                     executor: ex_type == 'own' ? queue : 'shared'
+                   })
 
       client_queue = Shoryuken::Client.queues(queue)
       return unless client_queue.fifo?
@@ -90,11 +95,17 @@ module Shoryuken
 
       fire_utilization_update_event
 
-      with_executor do |executor|
+      with_executor do |executor, ex_type|
+        Prometheus::ApplicationCustomMetrics.thread_pool
+          .increment(labels: {
+                       queue: queue_name,
+                       executor: ex_type == 'own' ? queue_name : 'shared'
+                     })
+
         Concurrent::Promise
           .execute(executor: executor) { Processor.process(queue_name, sqs_msg) }
-          .then { processor_done(queue_name) }
-          .rescue { processor_done(queue_name) }
+          .then { processor_done(queue_name, ex_type) }
+          .rescue { processor_done(queue_name, ex_type) }
       end
     end
 
