@@ -48,10 +48,11 @@ module Shoryuken
         # groups_concurrency = Shoryuken.groups.map do |_group, options|
         #   options[:concurrency]
         # end.sum
+        Rails.logger(event: :shoryuken_options, data: Shoryuken.options)
 
         Concurrent::ThreadPoolExecutor.new(
           min_threads: 1,
-          max_threads: Shoryuken.options[:concurrency],
+          max_threads: 23,
           auto_terminate: true,
           idletime: 60,
           max_queue: 100,
