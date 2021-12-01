@@ -51,7 +51,7 @@ module Shoryuken
 
         Concurrent::ThreadPoolExecutor.new(
           min_threads: 1,
-          max_threads: 25,
+          max_threads: Shoryuken.options[:concurrency],
           auto_terminate: true,
           idletime: 60,
           max_queue: 100,
