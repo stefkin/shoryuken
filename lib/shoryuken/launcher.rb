@@ -48,7 +48,7 @@ module Shoryuken
         # groups_concurrency = Shoryuken.groups.map do |_group, options|
         #   options[:concurrency]
         # end.sum
-        Rails.logger(event: :shoryuken_options, data: Shoryuken.options)
+        Rails.logger.info(event: :shoryuken_options, data: Shoryuken.options)
 
         Concurrent::ThreadPoolExecutor.new(
           min_threads: 1,
