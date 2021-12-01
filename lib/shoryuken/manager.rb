@@ -50,7 +50,7 @@ module Shoryuken
     def dispatch
       return unless running?
 
-      if ready < 1 || (queue = @polling_strategy.next_queue).nil?
+      if (queue = @polling_strategy.next_queue).nil?
         return sleep(MIN_DISPATCH_INTERVAL)
       end
 
