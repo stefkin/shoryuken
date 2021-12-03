@@ -52,7 +52,7 @@ module Shoryuken
 
         Concurrent::ThreadPoolExecutor.new(
           min_threads: 1,
-          max_threads: Sidekiq.options[:concurrency],
+          max_threads: Shoryuken.options[:concurrency],
           auto_terminate: true,
           idletime: 60,
           max_queue: 100,
